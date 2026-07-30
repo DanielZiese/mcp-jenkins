@@ -4,8 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - feat/credentials_as_env_variables
-      - ci/docker-image-preview
+      - 'feat/**'
 
 env:
   REGISTRY: ghcr.io
@@ -34,6 +33,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract metadata (tags based on branch name)
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=raw,value={{branch}}-{{sha}}
+
       - name: Build and push preview image
         uses: docker/build-push-action@v7
         with:
@@ -41,6 +49,7 @@ jobs:
           file: ./docker/Dockerfile
           target: production
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:credentials-env
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
